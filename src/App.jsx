@@ -14,6 +14,12 @@ function loadStored() {
   try { return JSON.parse(localStorage.getItem('trip-plan-items')) || samples } catch { return samples }
 }
 
+function getNaverDetailUrl(item) {
+  if (item.naver_link) return item.naver_link
+  const keyword = [item.title, item.address].filter(Boolean).join(' ')
+  return `https://map.naver.com/p/search/${encodeURIComponent(keyword)}`
+}
+
 export default function App() {
   const [items, setItems] = useState(loadStored)
   const [query, setQuery] = useState('')
@@ -25,6 +31,7 @@ export default function App() {
   const [message, setMessage] = useState('')
   const [draggedItem, setDraggedItem] = useState(null)
   const [contextMenu, setContextMenu] = useState(null)
+  const [selectedSchedule, setSelectedSchedule] = useState(null)
   const mapRef = useRef(null)
   const markerRef = useRef(null)
   const savedMarkersRef = useRef([])
@@ -106,7 +113,7 @@ export default function App() {
 
   async function addItem() {
     if (!selected) return setMessage('먼저 장소를 선택해 주세요.')
-    const item = { id: crypto.randomUUID(), title: selected.title, address: selected.roadAddress || selected.address || '', mapx: selected.mapx, mapy: selected.mapy, day, time, color: dayColors[day] }
+    const item = { id: crypto.randomUUID(), title: selected.title, address: selected.roadAddress || selected.address || '', naver_link: selected.naverLink || '', mapx: selected.mapx, mapy: selected.mapy, day, time, color: dayColors[day] }
     setItems(current => [...current, item])
     setSelected(null); setResults([]); setQuery(''); setMessage(`${day}일 ${time} 일정에 추가했습니다.`)
     if (supabase) {
@@ -138,7 +145,7 @@ export default function App() {
       <div className="planner-top"><div><p className="eyebrow">Jeju TRIP · 11 PEOPLE</p><h1>🍊</h1></div><span className={supabase ? 'live' : 'local'}>{supabase ? '● 실시간 공유 중' : '● 기기 내 임시 저장'}</span></div>
       <div className="calendar"><div className="corner">TIME</div>{days.map((d, i) => <div className="day-head" key={d}><b>{d}</b><span>{['금','토','일','월'][i]}</span></div>)}
         {times.map(t => <div className="time-row" key={t}><div className="time">{t}</div>{days.map(d => <div className={`slot ${planned.has(`${d}-${t}`) ? 'occupied' : ''} ${draggedItem ? 'drop-target' : ''}`} key={d} onDragOver={event => event.preventDefault()} onDrop={() => moveItem(d, t)}>
-          {items.filter(x => x.day === d && x.time === t).map(item => <article className="event" draggable style={{ '--event-color': dayColors[item.day] || item.color }} key={item.id} onDragStart={() => setDraggedItem(item)} onDragEnd={() => setDraggedItem(null)} onContextMenu={event => { event.preventDefault(); setContextMenu({ item, x: event.clientX, y: event.clientY }) }}><div><strong>{item.title}</strong><small>{item.address}</small></div><button onClick={() => removeItem(item)} aria-label={`${item.title} 삭제`}>×</button></article>)}
+          {items.filter(x => x.day === d && x.time === t).map(item => <article className="event" draggable style={{ '--event-color': dayColors[item.day] || item.color }} key={item.id} onClick={() => setSelectedSchedule(item)} onDragStart={() => setDraggedItem(item)} onDragEnd={() => setDraggedItem(null)} onContextMenu={event => { event.preventDefault(); setContextMenu({ item, x: event.clientX, y: event.clientY }) }}><div><strong>{item.title}</strong><small>{item.address}</small></div><button onClick={event => { event.stopPropagation(); removeItem(item) }} aria-label={`${item.title} 삭제`}>×</button></article>)}
         </div>)}</div>)}</div>
     </section>
     <aside className="side">
@@ -149,5 +156,14 @@ export default function App() {
       <div className="add-panel"><div className="selection">{selected ? <><b>{selected.title}</b><span>{selected.roadAddress || selected.address}</span></> : '장소를 선택해 주세요.'}</div><div className="date-time"><select value={day} onChange={e => setDay(e.target.value)}>{days.map(d => <option value={d} key={d}>{d}일</option>)}</select><select value={time} onChange={e => setTime(e.target.value)}>{times.map(t => <option key={t}>{t}</option>)}</select><button className="add" onClick={addItem}>일정에 추가</button></div>{message && <p className="message">{message}</p>}</div>
     </aside>
     {contextMenu && <div className="context-menu" style={{ left: contextMenu.x, top: contextMenu.y }}><button onClick={() => removeItem(contextMenu.item)}>일정 삭제</button></div>}
+    {selectedSchedule && <div className="schedule-detail-backdrop" onClick={() => setSelectedSchedule(null)}>
+      <section className="schedule-detail" role="dialog" aria-modal="true" aria-label={`${selectedSchedule.title} 일정 상세`} onClick={event => event.stopPropagation()}>
+        <button className="detail-close" onClick={() => setSelectedSchedule(null)} aria-label="상세 닫기">×</button>
+        <p className="eyebrow">{selectedSchedule.day}일 · {selectedSchedule.time}</p>
+        <h3>{selectedSchedule.title}</h3>
+        <p className="detail-address">{selectedSchedule.address || '주소 정보 없음'}</p>
+        <a className="naver-detail-link" href={getNaverDetailUrl(selectedSchedule)} target="_blank" rel="noreferrer">네이버 지도에서 상세보기</a>
+      </section>
+    </div>}
   </main>
 }
