@@ -19,7 +19,6 @@ export default async function handler(req, res) {
     title: item.title.replace(/<[^>]*>/g, ''),
     address: item.address,
     roadAddress: item.roadAddress,
-    naverLink: item.link || '',
     mapx: item.mapx,
     mapy: item.mapy,
   }))

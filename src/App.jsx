@@ -15,7 +15,6 @@ function loadStored() {
 }
 
 function getNaverDetailUrl(item) {
-  if (item.naver_link) return item.naver_link
   const keyword = [item.title, item.address].filter(Boolean).join(' ')
   return `https://map.naver.com/p/search/${encodeURIComponent(keyword)}`
 }
@@ -113,7 +112,7 @@ export default function App() {
 
   async function addItem() {
     if (!selected) return setMessage('먼저 장소를 선택해 주세요.')
-    const item = { id: crypto.randomUUID(), title: selected.title, address: selected.roadAddress || selected.address || '', naver_link: selected.naverLink || '', mapx: selected.mapx, mapy: selected.mapy, day, time, color: dayColors[day] }
+    const item = { id: crypto.randomUUID(), title: selected.title, address: selected.roadAddress || selected.address || '', mapx: selected.mapx, mapy: selected.mapy, day, time, color: dayColors[day] }
     setItems(current => [...current, item])
     setSelected(null); setResults([]); setQuery(''); setMessage(`${day}일 ${time} 일정에 추가했습니다.`)
     if (supabase) {

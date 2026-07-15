@@ -26,7 +26,6 @@ create table public.plan_items (
   id uuid primary key,
   title text not null,
   address text,
-  naver_link text,
   mapx text,
   mapy text,
   day text not null,
@@ -41,10 +40,9 @@ create policy "public plan delete" on public.plan_items for delete using (true);
 alter publication supabase_realtime add table public.plan_items;
 ```
 
-이미 `plan_items` 테이블을 만들었다면 지도 상세 링크와 좌표 컬럼만 추가합니다.
+이미 `plan_items` 테이블을 만들었다면 좌표 컬럼만 추가합니다.
 
 ```sql
-alter table public.plan_items add column if not exists naver_link text;
 alter table public.plan_items add column if not exists mapx text;
 alter table public.plan_items add column if not exists mapy text;
 ```
