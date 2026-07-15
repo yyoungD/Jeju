@@ -142,10 +142,10 @@ export default function App() {
         </div>)}</div>)}</div>
     </section>
     <aside className="side">
+      <div id="map" className="map">{!mapReady && <div className="map-fallback"><span>MAP</span><p>네이버 지도 Client ID를 연결하면<br />여기에 지도가 표시됩니다.</p></div>}</div>
       <div className="search-panel"><p className="eyebrow">PLACE FINDER</p><h2>어디로 갈까요?</h2><form onSubmit={search}><input value={query} onChange={e => setQuery(e.target.value)} placeholder="장소 또는 지역 검색" /><button>검색</button></form>
         <div className="results">{results.map(place => <button className={`place ${selected?.id === place.id ? 'selected' : ''}`} key={place.id} onClick={() => setSelected(place)}><b>{place.title}</b><span>{place.roadAddress || place.address}</span></button>)}</div>
       </div>
-      <div id="map" className="map">{!mapReady && <div className="map-fallback"><span>MAP</span><p>네이버 지도 Client ID를 연결하면<br />여기에 지도가 표시됩니다.</p></div>}</div>
       <div className="add-panel"><div className="selection">{selected ? <><b>{selected.title}</b><span>{selected.roadAddress || selected.address}</span></> : '장소를 선택해 주세요.'}</div><div className="date-time"><select value={day} onChange={e => setDay(e.target.value)}>{days.map(d => <option value={d} key={d}>{d}일</option>)}</select><select value={time} onChange={e => setTime(e.target.value)}>{times.map(t => <option key={t}>{t}</option>)}</select><button className="add" onClick={addItem}>일정에 추가</button></div>{message && <p className="message">{message}</p>}</div>
     </aside>
     {contextMenu && <div className="context-menu" style={{ left: contextMenu.x, top: contextMenu.y }}><button onClick={() => removeItem(contextMenu.item)}>일정 삭제</button></div>}
