@@ -26,6 +26,8 @@ create table public.plan_items (
   id uuid primary key,
   title text not null,
   address text,
+  mapx text,
+  mapy text,
   day text not null,
   time text not null,
   color text not null,
@@ -36,6 +38,13 @@ create policy "public plan read" on public.plan_items for select using (true);
 create policy "public plan add" on public.plan_items for insert with check (true);
 create policy "public plan delete" on public.plan_items for delete using (true);
 alter publication supabase_realtime add table public.plan_items;
+```
+
+이미 `plan_items` 테이블을 만들었다면 좌표 컬럼만 추가합니다.
+
+```sql
+alter table public.plan_items add column if not exists mapx text;
+alter table public.plan_items add column if not exists mapy text;
 ```
 
 네이버 지도는 Ncloud Console의 Maps Application에서 `Dynamic Map`을 선택하고, 서비스 URL에 Vercel 주소를 등록해야 합니다. Vercel에 Git 저장소를 연결한 뒤 위 환경변수를 등록하고 배포합니다. `NAVER_CLIENT_SECRET`은 Vercel 환경변수에만 등록하고, `VITE_` 접두사를 붙이지 않습니다.
