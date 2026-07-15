@@ -19,7 +19,7 @@ export default function App() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [selected, setSelected] = useState(null)
-  const [day, setDay] = useState('16')
+  const [day, setDay] = useState('17')
   const [time, setTime] = useState('10:00')
   const [mapReady, setMapReady] = useState(false)
   const [message, setMessage] = useState('')
