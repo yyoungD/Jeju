@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from './supabase'
 
 const days = ['16', '17', '18', '19', '20']
@@ -23,6 +23,8 @@ export default function App() {
   const [mapReady, setMapReady] = useState(false)
   const [message, setMessage] = useState('')
   const [draggedItem, setDraggedItem] = useState(null)
+  const mapRef = useRef(null)
+  const markerRef = useRef(null)
 
   useEffect(() => { localStorage.setItem('trip-plan-items', JSON.stringify(items)) }, [items])
 
@@ -41,43 +43,47 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    const appKey = import.meta.env.VITE_KAKAO_MAP_KEY
-    if (!appKey || window.kakao) { setMapReady(Boolean(window.kakao)); return }
+    const clientId = import.meta.env.VITE_NAVER_MAP_CLIENT_ID
+    if (!clientId || window.naver) { setMapReady(Boolean(window.naver)); return }
     const script = document.createElement('script')
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${appKey}&libraries=services&autoload=false`
-    script.onload = () => window.kakao.maps.load(() => setMapReady(true))
+    script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${clientId}`
+    script.onload = () => setMapReady(true)
     document.head.appendChild(script)
     return () => script.remove()
   }, [])
 
   useEffect(() => {
-    if (!mapReady || !window.kakao || !document.getElementById('map')) return
-    const center = new window.kakao.maps.LatLng(37.5665, 126.9780)
-    const map = new window.kakao.maps.Map(document.getElementById('map'), { center, level: 7 })
-    if (selected?.y) {
-      const position = new window.kakao.maps.LatLng(selected.y, selected.x)
-      map.setCenter(position); map.setLevel(3)
-      new window.kakao.maps.Marker({ map, position })
+    if (!mapReady || !window.naver || !document.getElementById('map')) return
+    if (!mapRef.current) {
+      mapRef.current = new window.naver.maps.Map('map', { center: new window.naver.maps.LatLng(37.5665, 126.9780), zoom: 11 })
+    }
+    if (selected?.mapx && selected?.mapy) {
+      const position = new window.naver.maps.LatLng(Number(selected.mapy) / 10000000, Number(selected.mapx) / 10000000)
+      mapRef.current.setCenter(position); mapRef.current.setZoom(15)
+      markerRef.current?.setMap(null)
+      markerRef.current = new window.naver.maps.Marker({ map: mapRef.current, position })
     }
   }, [mapReady, selected])
 
   const planned = useMemo(() => new Set(items.map(x => `${x.day}-${x.time}`)), [items])
 
-  function search(event) {
+  async function search(event) {
     event.preventDefault()
     if (!query.trim()) return
-    if (mapReady && window.kakao?.maps?.services) {
-      new window.kakao.maps.services.Places().keywordSearch(query, (data, status) => {
-        setResults(status === window.kakao.maps.services.Status.OK ? data.slice(0, 5) : [])
-      })
-    } else {
-      setResults([{ id: `local-${query}`, place_name: query, address_name: '지도 API 키를 연결하면 실제 검색 결과가 표시됩니다.' }])
+    try {
+      const response = await fetch(`/api/place-search?q=${encodeURIComponent(query)}`)
+      if (!response.ok) throw new Error('search failed')
+      const data = await response.json()
+      setResults(data.items || [])
+    } catch {
+      setResults([])
+      setMessage('장소 검색을 사용할 수 없습니다. Vercel 배포 환경과 네이버 API 설정을 확인해 주세요.')
     }
   }
 
   async function addItem() {
     if (!selected) return setMessage('먼저 장소를 선택해 주세요.')
-    const item = { id: crypto.randomUUID(), title: selected.place_name, address: selected.address_name || selected.road_address_name || '', day, time, color: ['#ff877d','#f6bc58','#90cfa2','#7fb7ff','#bb9af5'][items.length % 5] }
+    const item = { id: crypto.randomUUID(), title: selected.title, address: selected.roadAddress || selected.address || '', day, time, color: ['#ff877d','#f6bc58','#90cfa2','#7fb7ff','#bb9af5'][items.length % 5] }
     setItems(current => [...current, item])
     setSelected(null); setResults([]); setQuery(''); setMessage(`${day}일 ${time} 일정에 추가했습니다.`)
     if (supabase) {
@@ -113,10 +119,10 @@ export default function App() {
     </section>
     <aside className="side">
       <div className="search-panel"><p className="eyebrow">PLACE FINDER</p><h2>어디로 갈까요?</h2><form onSubmit={search}><input value={query} onChange={e => setQuery(e.target.value)} placeholder="장소 또는 지역 검색" /><button>검색</button></form>
-        <div className="results">{results.map(place => <button className={`place ${selected?.id === place.id ? 'selected' : ''}`} key={place.id} onClick={() => setSelected(place)}><b>{place.place_name}</b><span>{place.road_address_name || place.address_name}</span></button>)}</div>
+        <div className="results">{results.map(place => <button className={`place ${selected?.id === place.id ? 'selected' : ''}`} key={place.id} onClick={() => setSelected(place)}><b>{place.title}</b><span>{place.roadAddress || place.address}</span></button>)}</div>
       </div>
-      <div id="map" className="map">{!mapReady && <div className="map-fallback"><span>MAP</span><p>카카오 지도 API 키를 연결하면<br />여기에 지도가 표시됩니다.</p></div>}</div>
-      <div className="add-panel"><div className="selection">{selected ? <><b>{selected.place_name}</b><span>{selected.address_name || selected.road_address_name}</span></> : '장소를 선택해 주세요.'}</div><div className="date-time"><select value={day} onChange={e => setDay(e.target.value)}>{days.map(d => <option value={d} key={d}>{d}일</option>)}</select><select value={time} onChange={e => setTime(e.target.value)}>{times.map(t => <option key={t}>{t}</option>)}</select><button className="add" onClick={addItem}>일정에 추가</button></div>{message && <p className="message">{message}</p>}</div>
+      <div id="map" className="map">{!mapReady && <div className="map-fallback"><span>MAP</span><p>네이버 지도 Client ID를 연결하면<br />여기에 지도가 표시됩니다.</p></div>}</div>
+      <div className="add-panel"><div className="selection">{selected ? <><b>{selected.title}</b><span>{selected.roadAddress || selected.address}</span></> : '장소를 선택해 주세요.'}</div><div className="date-time"><select value={day} onChange={e => setDay(e.target.value)}>{days.map(d => <option value={d} key={d}>{d}일</option>)}</select><select value={time} onChange={e => setTime(e.target.value)}>{times.map(t => <option key={t}>{t}</option>)}</select><button className="add" onClick={addItem}>일정에 추가</button></div>{message && <p className="message">{message}</p>}</div>
     </aside>
   </main>
 }
