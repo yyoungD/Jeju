@@ -14,8 +14,19 @@ function loadStored() {
   try { return JSON.parse(localStorage.getItem('trip-plan-items')) || samples } catch { return samples }
 }
 
+function getNaverSearchAddress(item) {
+  const address = String(item.address || '')
+  const withoutDuplicateTitle = address
+    .split(item.title)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  const coreAddress = withoutDuplicateTitle.match(/(?:제주특별자치도\s+)?((?:제주시|서귀포시)\s+.*?\d+(?:-\d+)?)(?=\s|$)/)
+  return coreAddress?.[1] || withoutDuplicateTitle
+}
+
 function getNaverDetailUrl(item) {
-  const keyword = [item.title, item.address].filter(Boolean).join(' ')
+  const keyword = [item.title, getNaverSearchAddress(item)].filter(Boolean).join(' ')
   return `https://map.naver.com/p/search/${encodeURIComponent(keyword)}`
 }
 
